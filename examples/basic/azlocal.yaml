@@ -1,0 +1,13 @@
+services:
+  blob:
+    containers:
+      - uploads
+  cosmos:
+    databases:
+      - name: app
+        containers:
+          - name: users
+            partitionKey: /tenantId
+  servicebus:
+    queues:
+      - orders
