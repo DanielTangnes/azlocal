@@ -9,7 +9,7 @@ import (
 )
 
 const sampleConfig = `# azlocal configuration
-# Docs: https://github.com/yourusername/azlocal
+# Docs: https://github.com/DanielTangnes/azlocal
 
 services:
   blob:

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/yourusername/azlocal/internal/config"
+	"github.com/DanielTangnes/azlocal/internal/config"
 )
 
 func TestGenerate_StorageOnly(t *testing.T) {

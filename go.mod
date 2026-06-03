@@ -1,4 +1,4 @@
-module github.com/yourusername/azlocal
+module github.com/DanielTangnes/azlocal
 
 go 1.26.3
 

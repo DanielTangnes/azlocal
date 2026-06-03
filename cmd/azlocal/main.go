@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/yourusername/azlocal/internal/cli"
+	"github.com/DanielTangnes/azlocal/internal/cli"
 )
 
 // Version information set via -ldflags at build time.

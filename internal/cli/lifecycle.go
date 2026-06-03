@@ -6,8 +6,8 @@ import (
 	"os/exec"
 
 	"github.com/spf13/cobra"
-	"github.com/yourusername/azlocal/internal/compose"
-	"github.com/yourusername/azlocal/internal/config"
+	"github.com/DanielTangnes/azlocal/internal/compose"
+	"github.com/DanielTangnes/azlocal/internal/config"
 )
 
 func newDownCmd() *cobra.Command {

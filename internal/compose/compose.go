@@ -8,7 +8,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/yourusername/azlocal/internal/config"
+	"github.com/DanielTangnes/azlocal/internal/config"
 )
 
 // Project is a minimal subset of the docker-compose v3 schema, enough

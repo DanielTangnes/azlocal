@@ -20,7 +20,7 @@ has nothing equivalent. `azlocal` aims to be that.
 
 ```sh
 # from source (requires Go 1.22+ and Docker)
-git clone https://github.com/yourusername/azlocal
+git clone https://github.com/DanielTangnes/azlocal
 cd azlocal
 make install
 ```
