@@ -18,8 +18,36 @@ has nothing equivalent. `azlocal` aims to be that.
 
 ## Install
 
+### Homebrew (macOS / Linux)
+
 ```sh
-# from source (requires Go 1.22+ and Docker)
+brew install DanielTangnes/azlocal/azlocal
+```
+
+### `go install`
+
+```sh
+go install github.com/DanielTangnes/azlocal/cmd/azlocal@latest
+# or pin a specific version
+go install github.com/DanielTangnes/azlocal/cmd/azlocal@v0.1.0
+```
+
+### Pre-built binaries
+
+Download the archive for your OS/arch from the
+[releases page](https://github.com/DanielTangnes/azlocal/releases) and extract
+the `azlocal` binary onto your `PATH`.
+
+```sh
+# linux/amd64 example
+curl -sSL https://github.com/DanielTangnes/azlocal/releases/latest/download/azlocal_$(curl -s https://api.github.com/repos/DanielTangnes/azlocal/releases/latest | grep tag_name | cut -d'"' -f4 | sed 's/^v//')_Linux_x86_64.tar.gz \
+  | tar -xz -C /usr/local/bin azlocal
+```
+
+### From source
+
+```sh
+# requires Go 1.22+ and Docker
 git clone https://github.com/DanielTangnes/azlocal
 cd azlocal
 make install
@@ -75,7 +103,7 @@ samples and `DefaultAzureCredential` paths Just Work.
 - [ ] CI mode polish (`--ci`, `--wait-healthy`, JUnit health output)
 - [ ] Mocks for Key Vault, Event Grid, SignalR
 - [ ] Record/replay against real Azure resources
-- [ ] Homebrew / Scoop / `go install` distribution
+- [x] Homebrew / `go install` distribution
 
 ## Development
 
@@ -83,6 +111,30 @@ samples and `DefaultAzureCredential` paths Just Work.
 make test    # run unit tests
 make build   # produces bin/azlocal
 make run ARGS="render"
+```
+
+## Releasing
+
+Releases are produced by [GoReleaser](https://goreleaser.com/) on every
+`v*` tag push. To cut a new release:
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The release workflow then:
+
+1. Cross-compiles binaries for linux / macOS / windows on amd64 and arm64
+2. Publishes a GitHub Release with archives, `checksums.txt`, and an
+   auto-generated changelog
+3. Updates the Homebrew formula in
+   [`DanielTangnes/homebrew-azlocal`](https://github.com/DanielTangnes/homebrew-azlocal)
+
+To dry-run locally:
+
+```sh
+goreleaser release --snapshot --clean --skip=publish
 ```
 
 ## License

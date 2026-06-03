@@ -1,0 +1,74 @@
+version: 2
+
+project_name: azlocal
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: azlocal
+    main: ./cmd/azlocal
+    binary: azlocal
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^ci:'
+      - 'Merge pull request'
+      - 'Merge branch'
+
+brews:
+  - name: azlocal
+    repository:
+      owner: DanielTangnes
+      name: homebrew-azlocal
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    homepage: https://github.com/DanielTangnes/azlocal
+    description: "Local Azure-like dev environment CLI"
+    license: MIT
+    install: |
+      bin.install "azlocal"
+    test: |
+      system "#{bin}/azlocal", "--version"
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+
+release:
+  draft: false
+  prerelease: auto
