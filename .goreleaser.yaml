@@ -52,8 +52,9 @@ changelog:
       - 'Merge pull request'
       - 'Merge branch'
 
-brews:
+homebrew_casks:
   - name: azlocal
+    binaries: [azlocal]
     repository:
       owner: DanielTangnes
       name: homebrew-azlocal
@@ -61,10 +62,14 @@ brews:
     homepage: https://github.com/DanielTangnes/azlocal
     description: "Local Azure-like dev environment CLI"
     license: MIT
-    install: |
-      bin.install "azlocal"
-    test: |
-      system "#{bin}/azlocal", "--version"
+    url:
+      verified: github.com/DanielTangnes/azlocal
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/azlocal"]
+          end
     commit_author:
       name: goreleaserbot
       email: bot@goreleaser.com
