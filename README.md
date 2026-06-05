@@ -88,6 +88,39 @@ services:
         subscriptions: [audit, billing]
 ```
 
+## Resources and seeding
+
+The entities you declare under `services:` are created for you. Service Bus
+queues/topics/subscriptions are baked into a `Config.json` mounted into the
+emulator at startup; blob containers, queues, tables, and Cosmos
+databases/containers are created over the wire once the emulators are healthy.
+
+Optional `seed:` entries load data. Each entry has a `target` URI and a `from`
+path:
+
+```yaml
+seed:
+  - target: blob://uploads          # upload a file or a whole directory
+    from: ./fixtures/sample-files/
+  - target: cosmos://app/users      # JSON array or NDJSON of documents
+    from: ./fixtures/users.json
+  - target: queue://work-items      # JSON array of messages
+    from: ./fixtures/messages.json
+  - target: table://users           # JSON array of entities (PartitionKey/RowKey)
+    from: ./fixtures/rows.json
+  - target: servicebus://orders     # JSON array of messages (sb:// also works)
+    from: ./fixtures/orders.json
+```
+
+`azlocal up -d` provisions resources and loads seed data automatically after the
+suite is healthy. You can also run the steps on their own against a running
+suite:
+
+```sh
+azlocal provision   # create declared resources
+azlocal seed        # load seed data
+```
+
 ## Connection strings
 
 When `azlocal up -d` finishes it prints connection strings for the enabled
@@ -98,7 +131,10 @@ samples and `DefaultAzureCredential` paths Just Work.
 
 - [x] CLI skeleton (`up`, `down`, `status`, `logs`, `init`, `render`)
 - [x] Compose generation for Azurite, Cosmos, Service Bus
-- [ ] Declarative seeding (blob files, Cosmos containers, SB queues/topics)
+- [x] Declarative resource creation (blob containers, queues, tables, Cosmos
+      databases/containers, Service Bus queues/topics/subscriptions)
+- [x] Declarative seeding (blob files, Cosmos documents, queue/Service Bus
+      messages, table rows)
 - [ ] Unified web UI (browse blobs, query Cosmos, peek Service Bus)
 - [ ] CI mode polish (`--ci`, `--wait-healthy`, JUnit health output)
 - [ ] Mocks for Key Vault, Event Grid, SignalR

@@ -42,12 +42,20 @@ services:
           - audit
           - billing
 
-# Optional: seed data loaded on first start.
+# Optional: seed data loaded by "azlocal seed" (and automatically after
+# "azlocal up -d"). Supported targets:
+#   blob://<container>          from: a file or directory of files to upload
+#   queue://<queue>             from: a JSON array of messages
+#   table://<table>             from: a JSON array of entities (PartitionKey/RowKey)
+#   cosmos://<db>/<container>    from: a JSON array or NDJSON of documents
+#   servicebus://<queue|topic>  from: a JSON array of messages
 # seed:
 #   - target: blob://uploads
 #     from: ./fixtures/sample-files/
 #   - target: cosmos://app/users
 #     from: ./fixtures/users.json
+#   - target: servicebus://orders
+#     from: ./fixtures/orders.json
 `
 
 func newInitCmd() *cobra.Command {

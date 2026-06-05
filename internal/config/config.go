@@ -56,9 +56,10 @@ type CosmosContainer struct {
 }
 
 type ServiceBusService struct {
-	Queues []string            `yaml:"queues,omitempty"`
-	Topics []ServiceBusTopic   `yaml:"topics,omitempty"`
-	Port   int                 `yaml:"port,omitempty"`
+	Namespace string            `yaml:"namespace,omitempty"`
+	Queues    []string          `yaml:"queues,omitempty"`
+	Topics    []ServiceBusTopic `yaml:"topics,omitempty"`
+	Port      int               `yaml:"port,omitempty"`
 }
 
 type ServiceBusTopic struct {
