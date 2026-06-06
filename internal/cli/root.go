@@ -46,6 +46,8 @@ emulator suite. Run "azlocal status" to see what's running.`,
 		newLogsCmd(),
 		newInitCmd(),
 		newRenderCmd(),
+		newProvisionCmd(),
+		newSeedCmd(),
 	)
 
 	return root

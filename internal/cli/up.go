@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/DanielTangnes/azlocal/internal/compose"
 	"github.com/DanielTangnes/azlocal/internal/config"
+	"github.com/DanielTangnes/azlocal/internal/provision"
 )
 
 func newUpCmd() *cobra.Command {
@@ -28,12 +29,7 @@ the configured emulators.`,
 				return fmt.Errorf("load config: %w", err)
 			}
 
-			project, err := compose.Generate(cfg)
-			if err != nil {
-				return fmt.Errorf("generate compose project: %w", err)
-			}
-
-			path, err := compose.Write(project)
+			path, err := compose.WriteProject(cfg)
 			if err != nil {
 				return fmt.Errorf("write compose file: %w", err)
 			}
@@ -57,7 +53,22 @@ the configured emulators.`,
 				return fmt.Errorf("docker compose up: %w", err)
 			}
 
-			if detach || ci {
+			// --wait, -d, and --ci all return control to us with the suite
+			// running, so we can provision resources and load seed data. A
+			// plain foreground `up` blocks until interrupted; provision/seed
+			// from another shell (or use -d) in that case.
+			if detach || ci || waitHealthy {
+				ctx := cmd.Context()
+				fmt.Println("\nProvisioning resources...")
+				if err := provision.CreateResources(ctx, cfg); err != nil {
+					return fmt.Errorf("provision resources: %w", err)
+				}
+				if len(cfg.Seed) > 0 {
+					fmt.Println("Seeding data...")
+					if err := provision.Seed(ctx, cfg); err != nil {
+						return fmt.Errorf("seed data: %w", err)
+					}
+				}
 				printConnectionInfo(cfg)
 			}
 			return nil
@@ -79,7 +90,7 @@ func printConnectionInfo(cfg *config.Config) {
 		fmt.Println("  AZURE_STORAGE_CONNECTION_STRING=" +
 			"DefaultEndpointsProtocol=http;" +
 			"AccountName=devstoreaccount1;" +
-			"AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEEGc...;" +
+			"AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;" +
 			"BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;" +
 			"QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;" +
 			"TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;")

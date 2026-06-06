@@ -23,11 +23,7 @@ func newDownCmd() *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("load config: %w", err)
 				}
-				project, err := compose.Generate(cfg)
-				if err != nil {
-					return err
-				}
-				path, err = compose.Write(project)
+				path, err = compose.WriteProject(cfg)
 				if err != nil {
 					return err
 				}
@@ -100,6 +96,14 @@ func newRenderCmd() *cobra.Command {
 				return err
 			}
 			fmt.Print(string(out))
+
+			if cfg.Services.ServiceBus != nil {
+				sbCfg, err := compose.GenerateServiceBusConfig(cfg.Services.ServiceBus)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("\n---\n# servicebus-config.json\n%s\n", sbCfg)
+			}
 			return nil
 		},
 	}
