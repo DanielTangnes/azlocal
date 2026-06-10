@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>azlocal</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --border: #30363d; --text: #e6edf3;
+    --muted: #8b949e; --accent: #58a6ff; --ok: #3fb950; --bad: #f85149;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+         background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+  nav { width: 200px; flex-shrink: 0; background: var(--panel); border-right: 1px solid var(--border); padding: 16px 0; }
+  nav h1 { font-size: 18px; margin: 0 16px 16px; }
+  nav h1 span { color: var(--accent); }
+  nav button { display: block; width: 100%; text-align: left; padding: 8px 16px; background: none;
+               border: none; color: var(--muted); font: inherit; cursor: pointer; }
+  nav button:hover { color: var(--text); }
+  nav button.active { color: var(--text); background: var(--bg); border-left: 2px solid var(--accent); }
+  nav button:disabled { opacity: .35; cursor: default; }
+  main { flex: 1; padding: 24px; overflow-x: auto; }
+  h2 { margin-top: 0; font-size: 16px; }
+  .row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  select, input[type=text] { background: var(--panel); color: var(--text); border: 1px solid var(--border);
+         border-radius: 6px; padding: 6px 10px; font: inherit; }
+  input[type=text] { flex: 1; min-width: 200px; font-family: var(--mono); }
+  .btn { background: #21262d; color: var(--text); border: 1px solid var(--border); border-radius: 6px;
+         padding: 6px 14px; font: inherit; cursor: pointer; }
+  .btn:hover { border-color: var(--muted); }
+  .btn.primary { background: #1f6feb; border-color: #1f6feb; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; }
+  td { font-family: var(--mono); font-size: 13px; word-break: break-all; }
+  pre { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 12px;
+        overflow-x: auto; font-family: var(--mono); font-size: 12.5px; margin: 6px 0; white-space: pre-wrap; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; }
+  .pill.on { background: rgba(63,185,80,.15); color: var(--ok); }
+  .pill.off { background: rgba(139,148,158,.15); color: var(--muted); }
+  .err { color: var(--bad); font-family: var(--mono); font-size: 13px; white-space: pre-wrap; }
+  .muted { color: var(--muted); }
+  .conn { font-family: var(--mono); font-size: 12px; }
+  ul.plain { list-style: none; padding: 0; margin: 0; }
+  ul.plain li { padding: 6px 0; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 13px; }
+  a.link { color: var(--accent); cursor: pointer; text-decoration: none; }
+</style>
+</head>
+<body>
+<nav>
+  <h1><span>az</span>local</h1>
+  <button data-tab="overview" class="active">Overview</button>
+  <button data-tab="blob">Blobs</button>
+  <button data-tab="queue">Queues</button>
+  <button data-tab="table">Tables</button>
+  <button data-tab="cosmos">Cosmos DB</button>
+  <button data-tab="servicebus">Service Bus</button>
+  <button data-tab="keyvault">Key Vault</button>
+  <button data-tab="eventgrid">Event Grid</button>
+</nav>
+<main id="main"></main>
+
+<script>
+const $ = sel => document.querySelector(sel);
+const main = $('#main');
+let services = {};
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  const body = await r.json().catch(() => ({error: r.statusText}));
+  if (!r.ok) throw new Error(body.error?.message || body.error || r.statusText);
+  return body;
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const errBox = e => `<div class="err">⚠ ${esc(e.message || e)}</div>`;
+
+function setTab(name) {
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  views[name]();
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => setTab(b.dataset.tab));
+
+function renderTable(cols, rows, cells) {
+  if (!rows.length) return '<p class="muted">No items.</p>';
+  return `<table><thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(r => `<tr>${cells(r).map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+}
+
+const views = {
+  async overview() {
+    main.innerHTML = '<h2>Overview</h2><p class="muted">Loading…</p>';
+    try {
+      const o = await api('/api/overview');
+      services = o.services;
+      const order = ['blob','queue','table','cosmos','servicebus','keyvault','eventgrid'];
+      main.innerHTML = `<h2>Overview</h2>
+        <div class="row">${order.map(s =>
+          `<span class="pill ${o.services[s] ? 'on' : 'off'}">${s}</span>`).join('')}</div>
+        <h2>Connection strings</h2>
+        ${o.connectionStrings.map(c => `<pre class="conn">${esc(c)}</pre>`).join('')}`;
+      document.querySelectorAll('nav button').forEach(b => {
+        const t = b.dataset.tab;
+        if (t === 'overview') return;
+        const enabled = t === 'blob' || t === 'queue' || t === 'table'
+          ? o.services[t] : o.services[t];
+        b.disabled = !enabled;
+      });
+    } catch (e) { main.innerHTML = '<h2>Overview</h2>' + errBox(e); }
+  },
+
+  async blob() {
+    main.innerHTML = '<h2>Blobs</h2><p class="muted">Loading containers…</p>';
+    try {
+      const containers = await api('/api/blob/containers');
+      main.innerHTML = `<h2>Blobs</h2>
+        <div class="row">
+          <select id="bc">${containers.map(c => `<option>${esc(c)}</option>`).join('')}</select>
+          <input type="text" id="bp" placeholder="prefix (optional)">
+          <button class="btn primary" id="bload">List</button>
+        </div><div id="bout"></div>`;
+      const load = async () => {
+        $('#bout').innerHTML = '<p class="muted">Loading…</p>';
+        try {
+          const blobs = await api(`/api/blob/list?container=${encodeURIComponent($('#bc').value)}&prefix=${encodeURIComponent($('#bp').value)}`);
+          $('#bout').innerHTML = renderTable(['name','size','content type','last modified'], blobs,
+            b => [esc(b.name), fmtSize(b.size), esc(b.contentType || ''), esc((b.lastModified||'').replace('T',' ').slice(0,19))]);
+        } catch (e) { $('#bout').innerHTML = errBox(e); }
+      };
+      $('#bload').onclick = load;
+      if (containers.length) load();
+    } catch (e) { main.innerHTML = '<h2>Blobs</h2>' + errBox(e); }
+  },
+
+  async queue() {
+    main.innerHTML = '<h2>Queues</h2><p class="muted">Loading…</p>';
+    try {
+      const queues = await api('/api/queue/list');
+      main.innerHTML = `<h2>Queues</h2>
+        <div class="row">
+          <select id="qn">${queues.map(q => `<option>${esc(q)}</option>`).join('')}</select>
+          <button class="btn primary" id="qpeek">Peek</button>
+          <span class="muted">peek shows up to 32 messages without consuming them</span>
+        </div><div id="qout"></div>`;
+      const peek = async () => {
+        $('#qout').innerHTML = '<p class="muted">Peeking…</p>';
+        try {
+          const msgs = await api(`/api/queue/peek?name=${encodeURIComponent($('#qn').value)}`);
+          $('#qout').innerHTML = renderTable(['id','dequeues','text'], msgs,
+            m => [esc(m.id), m.dequeueCount, esc(m.text)]);
+        } catch (e) { $('#qout').innerHTML = errBox(e); }
+      };
+      $('#qpeek').onclick = peek;
+      if (queues.length) peek();
+    } catch (e) { main.innerHTML = '<h2>Queues</h2>' + errBox(e); }
+  },
+
+  async table() {
+    main.innerHTML = '<h2>Tables</h2><p class="muted">Loading…</p>';
+    try {
+      const tables = await api('/api/table/list');
+      main.innerHTML = `<h2>Tables</h2>
+        <div class="row">
+          <select id="tn">${tables.map(t => `<option>${esc(t)}</option>`).join('')}</select>
+          <button class="btn primary" id="tload">Scan</button>
+          <span class="muted">first 100 entities</span>
+        </div><div id="tout"></div>`;
+      const load = async () => {
+        $('#tout').innerHTML = '<p class="muted">Loading…</p>';
+        try {
+          const rows = await api(`/api/table/rows?name=${encodeURIComponent($('#tn').value)}`);
+          if (!rows.length) { $('#tout').innerHTML = '<p class="muted">No entities.</p>'; return; }
+          const cols = ['PartitionKey','RowKey', ...Object.keys(rows[0]).filter(k => !['PartitionKey','RowKey','odata.etag','Timestamp'].includes(k))];
+          $('#tout').innerHTML = renderTable(cols, rows, r => cols.map(c => esc(r[c] ?? '')));
+        } catch (e) { $('#tout').innerHTML = errBox(e); }
+      };
+      $('#tload').onclick = load;
+      if (tables.length) load();
+    } catch (e) { main.innerHTML = '<h2>Tables</h2>' + errBox(e); }
+  },
+
+  async cosmos() {
+    main.innerHTML = '<h2>Cosmos DB</h2><p class="muted">Loading…</p>';
+    try {
+      const dbs = await api('/api/cosmos/meta');
+      const pairs = dbs.flatMap(d => (d.containers || d.Containers || []).map(c =>
+        `${d.name || d.Name}/${c.name || c.Name}`));
+      main.innerHTML = `<h2>Cosmos DB</h2>
+        <div class="row">
+          <select id="cc">${pairs.map(p => `<option>${esc(p)}</option>`).join('')}</select>
+          <input type="text" id="cq" value="SELECT * FROM c">
+          <button class="btn primary" id="crun">Run</button>
+        </div><div id="cout"></div>`;
+      const run = async () => {
+        $('#cout').innerHTML = '<p class="muted">Querying…</p>';
+        const [database, container] = $('#cc').value.split('/');
+        try {
+          const docs = await api('/api/cosmos/query', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({database, container, query: $('#cq').value}),
+          });
+          $('#cout').innerHTML = docs.length
+            ? docs.map(d => `<pre>${esc(JSON.stringify(d, null, 2))}</pre>`).join('')
+            : '<p class="muted">No results.</p>';
+        } catch (e) { $('#cout').innerHTML = errBox(e); }
+      };
+      $('#crun').onclick = run;
+      $('#cq').addEventListener('keydown', e => { if (e.key === 'Enter') run(); });
+    } catch (e) { main.innerHTML = '<h2>Cosmos DB</h2>' + errBox(e); }
+  },
+
+  async servicebus() {
+    main.innerHTML = '<h2>Service Bus</h2><p class="muted">Loading…</p>';
+    try {
+      const meta = await api('/api/servicebus/meta');
+      const opts = [
+        ...meta.queues.map(q => ({label: `queue: ${q}`, entity: q, sub: ''})),
+        ...meta.topics.flatMap(t => (t.subscriptions || []).map(s =>
+          ({label: `topic: ${t.name} / ${s}`, entity: t.name, sub: s}))),
+      ];
+      main.innerHTML = `<h2>Service Bus</h2>
+        <div class="row">
+          <select id="se">${opts.map((o,i) => `<option value="${i}">${esc(o.label)}</option>`).join('')}</select>
+          <button class="btn primary" id="speek">Peek</button>
+          <span class="muted">peek does not consume messages</span>
+        </div><div id="sout"></div>`;
+      const peek = async () => {
+        $('#sout').innerHTML = '<p class="muted">Peeking…</p>';
+        const o = opts[+$('#se').value];
+        try {
+          const msgs = await api(`/api/servicebus/peek?entity=${encodeURIComponent(o.entity)}&subscription=${encodeURIComponent(o.sub)}`);
+          $('#sout').innerHTML = renderTable(['seq','message id','body'], msgs,
+            m => [m.sequenceNumber, esc(m.messageId), esc(m.body)]);
+        } catch (e) { $('#sout').innerHTML = errBox(e); }
+      };
+      $('#speek').onclick = peek;
+      if (opts.length) peek(); else $('#sout').innerHTML = '<p class="muted">No entities declared.</p>';
+    } catch (e) { main.innerHTML = '<h2>Service Bus</h2>' + errBox(e); }
+  },
+
+  async keyvault() {
+    main.innerHTML = '<h2>Key Vault (mock)</h2><p class="muted">Loading…</p>';
+    try {
+      const list = await api('/api/keyvault/secrets');
+      const names = (list.value || []).map(s => s.id.split('/').pop());
+      main.innerHTML = `<h2>Key Vault (mock)</h2>
+        ${names.length ? `<ul class="plain">${names.map(n =>
+          `<li><a class="link" data-name="${esc(n)}">${esc(n)}</a> <span class="muted" id="kv-${esc(n)}"></span></li>`).join('')}</ul>`
+          : '<p class="muted">No secrets.</p>'}
+        <p class="muted">Click a secret to reveal its latest value.</p>`;
+      document.querySelectorAll('a.link[data-name]').forEach(a => a.onclick = async () => {
+        const n = a.dataset.name;
+        try {
+          const s = await api(`/api/keyvault/secret?name=${encodeURIComponent(n)}`);
+          document.getElementById('kv-' + n).textContent = '= ' + s.value;
+        } catch (e) { document.getElementById('kv-' + n).textContent = '⚠ ' + e.message; }
+      });
+    } catch (e) { main.innerHTML = '<h2>Key Vault (mock)</h2>' + errBox(e); }
+  },
+
+  async eventgrid() {
+    main.innerHTML = '<h2>Event Grid (mock)</h2><p class="muted">Loading…</p>';
+    try {
+      const topics = await api('/api/eventgrid/topics');
+      main.innerHTML = `<h2>Event Grid (mock)</h2>
+        <div class="row">
+          <select id="et">${topics.map(t => `<option>${esc(t.name)}</option>`).join('')}</select>
+          <button class="btn primary" id="eload">Show recent events</button>
+        </div><div id="eout"></div>`;
+      const load = async () => {
+        $('#eout').innerHTML = '<p class="muted">Loading…</p>';
+        try {
+          const events = await api(`/api/eventgrid/events?topic=${encodeURIComponent($('#et').value)}`);
+          $('#eout').innerHTML = events.length ? events.map(ev => `
+            <pre>${esc(JSON.stringify(ev.event, null, 2))}</pre>
+            <p class="muted">received ${esc(ev.receivedAt)} — ${ev.deliveries.map(d =>
+              `${esc(d.subscription)}: ${d.error ? `<span class="err">${esc(d.error)}</span>` : (d.status || 'pending')}`).join(', ') || 'no subscriptions'}</p>`).join('')
+            : '<p class="muted">No events received yet.</p>';
+        } catch (e) { $('#eout').innerHTML = errBox(e); }
+      };
+      $('#eload').onclick = load;
+      if (topics.length) load(); else main.insertAdjacentHTML('beforeend', '<p class="muted">No topics configured.</p>');
+    } catch (e) { main.innerHTML = '<h2>Event Grid (mock)</h2>' + errBox(e); }
+  },
+};
+
+function fmtSize(n) {
+  if (n == null) return '';
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n/1024).toFixed(1) + ' KB';
+  return (n/1048576).toFixed(1) + ' MB';
+}
+
+setTab('overview');
+</script>
+</body>
+</html>

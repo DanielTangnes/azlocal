@@ -48,6 +48,8 @@ emulator suite. Run "azlocal status" to see what's running.`,
 		newRenderCmd(),
 		newProvisionCmd(),
 		newSeedCmd(),
+		newMocksCmd(),
+		newUICmd(),
 	)
 
 	return root

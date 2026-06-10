@@ -50,13 +50,13 @@ type CosmosService struct {
 }
 
 type CosmosDatabase struct {
-	Name       string            `yaml:"name"`
-	Containers []CosmosContainer `yaml:"containers,omitempty"`
+	Name       string            `yaml:"name" json:"name"`
+	Containers []CosmosContainer `yaml:"containers,omitempty" json:"containers"`
 }
 
 type CosmosContainer struct {
-	Name         string `yaml:"name"`
-	PartitionKey string `yaml:"partitionKey"`
+	Name         string `yaml:"name" json:"name"`
+	PartitionKey string `yaml:"partitionKey" json:"partitionKey"`
 }
 
 type ServiceBusService struct {
@@ -67,8 +67,8 @@ type ServiceBusService struct {
 }
 
 type ServiceBusTopic struct {
-	Name          string   `yaml:"name"`
-	Subscriptions []string `yaml:"subscriptions,omitempty"`
+	Name          string   `yaml:"name" json:"name"`
+	Subscriptions []string `yaml:"subscriptions,omitempty" json:"subscriptions"`
 }
 
 // KeyVaultService configures the built-in Key Vault mock (secrets API).
@@ -87,13 +87,13 @@ type EventGridService struct {
 }
 
 type EventGridTopic struct {
-	Name          string                  `yaml:"name"`
-	Subscriptions []EventGridSubscription `yaml:"subscriptions,omitempty"`
+	Name          string                  `yaml:"name" json:"name"`
+	Subscriptions []EventGridSubscription `yaml:"subscriptions,omitempty" json:"subscriptions"`
 }
 
 type EventGridSubscription struct {
-	Name     string `yaml:"name"`
-	Endpoint string `yaml:"endpoint"` // webhook URL events are delivered to
+	Name     string `yaml:"name" json:"name"`
+	Endpoint string `yaml:"endpoint" json:"endpoint"` // webhook URL events are delivered to
 }
 
 // Seed describes a single seed-data target.

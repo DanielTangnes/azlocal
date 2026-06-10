@@ -30,34 +30,46 @@ the configured emulators.`,
 			if err != nil {
 				return fmt.Errorf("load config: %w", err)
 			}
+			ctx := cmd.Context()
+			hasContainers := cfg.HasContainers()
+			background := detach || ci || waitHealthy || !hasContainers
 
-			path, err := compose.WriteProject(cfg)
-			if err != nil {
-				return fmt.Errorf("write compose file: %w", err)
-			}
-			if verbose {
-				fmt.Fprintf(os.Stderr, "wrote compose file: %s\n", path)
-			}
-
-			composeArgs := []string{"compose", "-f", path, "-p", "azlocal", "up"}
-			if detach || ci {
-				composeArgs = append(composeArgs, "-d")
-			}
-			if waitHealthy || ci {
-				composeArgs = append(composeArgs, "--wait")
+			// In-process mocks (Key Vault / Event Grid) run as a small
+			// background daemon, independent of docker.
+			if cfg.HasMocks() {
+				if err := startMocksDaemon(cfg); err != nil {
+					return err
+				}
 			}
 
-			background := detach || ci || waitHealthy
-			if !background {
-				fmt.Fprintln(os.Stderr, "note: foreground mode; resources will not be provisioned or seeded automatically (use -d, or run \"azlocal provision\"/\"azlocal seed\" from another shell)")
-			}
+			if hasContainers {
+				path, err := compose.WriteProject(cfg)
+				if err != nil {
+					return fmt.Errorf("write compose file: %w", err)
+				}
+				if verbose {
+					fmt.Fprintf(os.Stderr, "wrote compose file: %s\n", path)
+				}
 
-			c := exec.Command("docker", composeArgs...)
-			c.Stdout = os.Stdout
-			c.Stderr = os.Stderr
-			c.Stdin = os.Stdin
-			if err := c.Run(); err != nil {
-				return fmt.Errorf("docker compose up: %w", err)
+				composeArgs := []string{"compose", "-f", path, "-p", "azlocal", "up"}
+				if detach || ci {
+					composeArgs = append(composeArgs, "-d")
+				}
+				if waitHealthy || ci {
+					composeArgs = append(composeArgs, "--wait")
+				}
+
+				if !background {
+					fmt.Fprintln(os.Stderr, "note: foreground mode; resources will not be provisioned or seeded automatically (use -d, or run \"azlocal provision\"/\"azlocal seed\" from another shell)")
+				}
+
+				c := exec.Command("docker", composeArgs...)
+				c.Stdout = os.Stdout
+				c.Stderr = os.Stderr
+				c.Stdin = os.Stdin
+				if err := c.Run(); err != nil {
+					return fmt.Errorf("docker compose up: %w", err)
+				}
 			}
 
 			// --wait, -d, and --ci all return control to us with the suite
@@ -65,20 +77,21 @@ the configured emulators.`,
 			// plain foreground `up` blocks until interrupted; provision/seed
 			// from another shell (or use -d) in that case.
 			if background {
-				ctx := cmd.Context()
-				fmt.Println("\nProvisioning resources...")
-				if err := provision.CreateResources(ctx, cfg); err != nil {
-					return fmt.Errorf("provision resources: %w", err)
-				}
-				if len(cfg.Seed) > 0 {
-					fmt.Println("Seeding data...")
-					if err := provision.Seed(ctx, cfg); err != nil {
-						return fmt.Errorf("seed data: %w", err)
+				if hasContainers {
+					fmt.Println("\nProvisioning resources...")
+					if err := provision.CreateResources(ctx, cfg); err != nil {
+						return fmt.Errorf("provision resources: %w", err)
+					}
+					if len(cfg.Seed) > 0 {
+						fmt.Println("Seeding data...")
+						if err := provision.Seed(ctx, cfg); err != nil {
+							return fmt.Errorf("seed data: %w", err)
+						}
 					}
 				}
 				printConnectionInfo(cfg)
 
-				if junitPath != "" {
+				if junitPath != "" && hasContainers {
 					r, err := health.Check(ctx, "azlocal", expectedServices())
 					if err != nil {
 						return fmt.Errorf("health check: %w", err)
