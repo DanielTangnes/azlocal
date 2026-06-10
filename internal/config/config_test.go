@@ -65,9 +65,9 @@ func TestParseSeedTarget(t *testing.T) {
 		{in: "no-scheme", wantErr: true},
 		{in: "blob://", wantErr: true},
 		{in: "blob:///", wantErr: true},
-		{in: "ftp://nope", wantErr: true},          // unknown scheme
-		{in: "cosmos://only-db", wantErr: true},    // wrong arity
-		{in: "blob://a/b", wantErr: true},          // wrong arity
+		{in: "ftp://nope", wantErr: true},       // unknown scheme
+		{in: "cosmos://only-db", wantErr: true}, // wrong arity
+		{in: "blob://a/b", wantErr: true},       // wrong arity
 	}
 	for _, tc := range tests {
 		got, err := ParseSeedTarget(tc.in)

@@ -5,9 +5,10 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/spf13/cobra"
 	"github.com/DanielTangnes/azlocal/internal/compose"
 	"github.com/DanielTangnes/azlocal/internal/config"
+	"github.com/DanielTangnes/azlocal/internal/health"
+	"github.com/spf13/cobra"
 )
 
 func newDownCmd() *cobra.Command {
@@ -45,16 +46,72 @@ func newDownCmd() *cobra.Command {
 }
 
 func newStatusCmd() *cobra.Command {
-	return &cobra.Command{
+	var (
+		jsonOut   bool
+		junitPath string
+	)
+	cmd := &cobra.Command{
 		Use:   "status",
 		Short: "Show status of running emulator services",
+		Long: `Shows the status of the emulator suite.
+
+With --json or --junit the status is checked programmatically and the command
+exits non-zero if any expected service is missing or unhealthy, making it
+suitable as a CI gate:
+
+  azlocal status --junit health-report.xml`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			c := exec.Command("docker", "compose", "-p", "azlocal", "ps")
-			c.Stdout = os.Stdout
-			c.Stderr = os.Stderr
-			return c.Run()
+			if !jsonOut && junitPath == "" {
+				c := exec.Command("docker", "compose", "-p", "azlocal", "ps")
+				c.Stdout = os.Stdout
+				c.Stderr = os.Stderr
+				return c.Run()
+			}
+			r, err := health.Check(cmd.Context(), "azlocal", expectedServices())
+			if err != nil {
+				return err
+			}
+			if jsonOut {
+				out, err := r.JSON()
+				if err != nil {
+					return err
+				}
+				fmt.Println(string(out))
+			}
+			if junitPath != "" {
+				if err := r.WriteJUnit(junitPath); err != nil {
+					return fmt.Errorf("write junit report: %w", err)
+				}
+				fmt.Fprintf(os.Stderr, "wrote %s (%s)\n", junitPath, r.Summary())
+			}
+			if !r.Ok {
+				return fmt.Errorf("suite is unhealthy: %s", r.Summary())
+			}
+			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&jsonOut, "json", false, "print a machine-readable health report")
+	cmd.Flags().StringVar(&junitPath, "junit", "", "write a JUnit XML health report to this path")
+	return cmd
+}
+
+// expectedServices derives the compose service names the config implies, so
+// health reports flag services that never started. Best-effort: an unloadable
+// config just means no absence detection.
+func expectedServices() []string {
+	cfg, err := config.Load(cfgFile)
+	if err != nil {
+		return nil
+	}
+	project, err := compose.Generate(cfg)
+	if err != nil {
+		return nil
+	}
+	names := make([]string, 0, len(project.Services))
+	for name := range project.Services {
+		names = append(names, name)
+	}
+	return names
 }
 
 func newLogsCmd() *cobra.Command {

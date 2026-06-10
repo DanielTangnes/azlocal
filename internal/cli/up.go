@@ -5,10 +5,11 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/spf13/cobra"
 	"github.com/DanielTangnes/azlocal/internal/compose"
 	"github.com/DanielTangnes/azlocal/internal/config"
+	"github.com/DanielTangnes/azlocal/internal/health"
 	"github.com/DanielTangnes/azlocal/internal/provision"
+	"github.com/spf13/cobra"
 )
 
 func newUpCmd() *cobra.Command {
@@ -16,6 +17,7 @@ func newUpCmd() *cobra.Command {
 		ci          bool
 		waitHealthy bool
 		detach      bool
+		junitPath   string
 	)
 
 	cmd := &cobra.Command{
@@ -75,6 +77,20 @@ the configured emulators.`,
 					}
 				}
 				printConnectionInfo(cfg)
+
+				if junitPath != "" {
+					r, err := health.Check(ctx, "azlocal", expectedServices())
+					if err != nil {
+						return fmt.Errorf("health check: %w", err)
+					}
+					if err := r.WriteJUnit(junitPath); err != nil {
+						return fmt.Errorf("write junit report: %w", err)
+					}
+					fmt.Fprintf(os.Stderr, "wrote %s (%s)\n", junitPath, r.Summary())
+					if !r.Ok {
+						return fmt.Errorf("suite is unhealthy: %s", r.Summary())
+					}
+				}
 			}
 			return nil
 		},
@@ -83,6 +99,7 @@ the configured emulators.`,
 	cmd.Flags().BoolVar(&ci, "ci", false, "CI mode: detach, wait for health, no persistence")
 	cmd.Flags().BoolVar(&waitHealthy, "wait-healthy", false, "wait until all services are healthy")
 	cmd.Flags().BoolVarP(&detach, "detach", "d", false, "run in background")
+	cmd.Flags().StringVar(&junitPath, "junit", "", "write a JUnit XML health report after startup (implies a health check)")
 
 	return cmd
 }
