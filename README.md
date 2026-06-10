@@ -1,4 +1,4 @@
-# azlocal
+# azlocal 
 
 > A unified local Azure emulator suite. One binary, one config, one command.
 
