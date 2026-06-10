@@ -11,3 +11,6 @@ services:
   servicebus:
     queues:
       - orders
+  keyvault:
+    secrets:
+      db-password: hunter2

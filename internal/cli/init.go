@@ -42,6 +42,17 @@ services:
           - audit
           - billing
 
+  # Built-in mocks (no docker containers; run by "azlocal up" / "azlocal mocks"):
+  # keyvault:
+  #   secrets:
+  #     db-password: hunter2        # served at https://localhost:8200
+  # eventgrid:
+  #   topics:
+  #     - name: app-events          # publish to http://localhost:8210/app-events/api/events
+  #       subscriptions:
+  #         - name: local-function
+  #           endpoint: http://localhost:7071/runtime/webhooks/eventgrid?functionName=Handler
+
 # Optional: seed data loaded by "azlocal seed" (and automatically after
 # "azlocal up -d"). Supported targets:
 #   blob://<container>          from: a file or directory of files to upload

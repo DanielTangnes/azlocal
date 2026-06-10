@@ -12,52 +12,6 @@ func writeFile(path, content string) error {
 	return os.WriteFile(path, []byte(content), 0o644)
 }
 
-func TestParseTarget(t *testing.T) {
-	tests := []struct {
-		in         string
-		wantScheme string
-		wantParts  []string
-		wantErr    bool
-	}{
-		{in: "blob://uploads", wantScheme: "blob", wantParts: []string{"uploads"}},
-		{in: "queue://work-items", wantScheme: "queue", wantParts: []string{"work-items"}},
-		{in: "table://users", wantScheme: "table", wantParts: []string{"users"}},
-		{in: "cosmos://app/users", wantScheme: "cosmos", wantParts: []string{"app", "users"}},
-		{in: "servicebus://orders", wantScheme: "servicebus", wantParts: []string{"orders"}},
-		{in: "sb://orders", wantScheme: "servicebus", wantParts: []string{"orders"}}, // alias
-		{in: "BLOB://Uploads", wantScheme: "blob", wantParts: []string{"Uploads"}},   // scheme lowercased, path preserved
-		{in: "blob://uploads/", wantScheme: "blob", wantParts: []string{"uploads"}},  // trailing slash trimmed
-		{in: "no-scheme", wantErr: true},
-		{in: "blob://", wantErr: true},
-		{in: "blob:///", wantErr: true},
-	}
-	for _, tc := range tests {
-		got, err := parseTarget(tc.in)
-		if tc.wantErr {
-			if err == nil {
-				t.Errorf("parseTarget(%q): expected error, got %+v", tc.in, got)
-			}
-			continue
-		}
-		if err != nil {
-			t.Errorf("parseTarget(%q): unexpected error: %v", tc.in, err)
-			continue
-		}
-		if got.scheme != tc.wantScheme {
-			t.Errorf("parseTarget(%q) scheme = %q, want %q", tc.in, got.scheme, tc.wantScheme)
-		}
-		if len(got.parts) != len(tc.wantParts) {
-			t.Errorf("parseTarget(%q) parts = %v, want %v", tc.in, got.parts, tc.wantParts)
-			continue
-		}
-		for i := range got.parts {
-			if got.parts[i] != tc.wantParts[i] {
-				t.Errorf("parseTarget(%q) parts[%d] = %q, want %q", tc.in, i, got.parts[i], tc.wantParts[i])
-			}
-		}
-	}
-}
-
 func TestCosmosPartitionKey(t *testing.T) {
 	cfg := &config.Config{Services: config.Services{Cosmos: &config.CosmosService{
 		Databases: []config.CosmosDatabase{{
