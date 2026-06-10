@@ -45,6 +45,11 @@ the configured emulators.`,
 				composeArgs = append(composeArgs, "--wait")
 			}
 
+			background := detach || ci || waitHealthy
+			if !background {
+				fmt.Fprintln(os.Stderr, "note: foreground mode; resources will not be provisioned or seeded automatically (use -d, or run \"azlocal provision\"/\"azlocal seed\" from another shell)")
+			}
+
 			c := exec.Command("docker", composeArgs...)
 			c.Stdout = os.Stdout
 			c.Stderr = os.Stderr
@@ -57,7 +62,7 @@ the configured emulators.`,
 			// running, so we can provision resources and load seed data. A
 			// plain foreground `up` blocks until interrupted; provision/seed
 			// from another shell (or use -d) in that case.
-			if detach || ci || waitHealthy {
+			if background {
 				ctx := cmd.Context()
 				fmt.Println("\nProvisioning resources...")
 				if err := provision.CreateResources(ctx, cfg); err != nil {
@@ -82,25 +87,15 @@ the configured emulators.`,
 	return cmd
 }
 
+// printConnectionInfo prints the connection lines built by the provision
+// package, so the output always honors port overrides and never drifts from
+// the endpoints the SDK clients actually use.
 func printConnectionInfo(cfg *config.Config) {
 	fmt.Println()
 	fmt.Println("azlocal is running. Connection strings:")
 	fmt.Println()
-	if cfg.Services.Blob != nil || cfg.Services.Queue != nil || cfg.Services.Table != nil {
-		fmt.Println("  AZURE_STORAGE_CONNECTION_STRING=" +
-			"DefaultEndpointsProtocol=http;" +
-			"AccountName=devstoreaccount1;" +
-			"AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;" +
-			"BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;" +
-			"QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;" +
-			"TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;")
-	}
-	if cfg.Services.Cosmos != nil {
-		fmt.Println("  COSMOS_ENDPOINT=https://localhost:8081")
-		fmt.Println("  COSMOS_KEY=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==")
-	}
-	if cfg.Services.ServiceBus != nil {
-		fmt.Println("  SERVICEBUS_CONNECTION_STRING=Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;")
+	for _, line := range provision.ConnectionStrings(cfg) {
+		fmt.Println("  " + line)
 	}
 	fmt.Println()
 }

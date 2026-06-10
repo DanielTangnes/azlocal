@@ -47,7 +47,7 @@ curl -sSL https://github.com/DanielTangnes/azlocal/releases/latest/download/azlo
 ### From source
 
 ```sh
-# requires Go 1.22+ and Docker
+# requires Go 1.26+ and Docker
 git clone https://github.com/DanielTangnes/azlocal
 cd azlocal
 make install

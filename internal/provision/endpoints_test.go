@@ -9,7 +9,7 @@ import (
 
 func TestStorageConnString_Defaults(t *testing.T) {
 	cfg := &config.Config{Services: config.Services{Blob: &config.BlobService{}}}
-	got := storageConnString(cfg)
+	got := StorageConnString(cfg)
 	for _, want := range []string{
 		"AccountName=devstoreaccount1",
 		"AccountKey=" + devAccountKey,
@@ -29,7 +29,7 @@ func TestStorageConnString_PortOverrides(t *testing.T) {
 		Queue: &config.QueueService{Port: 20001},
 		Table: &config.TableService{Port: 20002},
 	}}
-	got := storageConnString(cfg)
+	got := StorageConnString(cfg)
 	for _, want := range []string{
 		"BlobEndpoint=http://127.0.0.1:20000/devstoreaccount1",
 		"QueueEndpoint=http://127.0.0.1:20001/devstoreaccount1",
@@ -43,11 +43,11 @@ func TestStorageConnString_PortOverrides(t *testing.T) {
 
 func TestCosmosEndpoint(t *testing.T) {
 	def := &config.Config{Services: config.Services{Cosmos: &config.CosmosService{}}}
-	if got := cosmosEndpoint(def); got != "https://localhost:8081" {
+	if got := CosmosEndpoint(def); got != "https://localhost:8081" {
 		t.Errorf("default cosmos endpoint = %q", got)
 	}
 	custom := &config.Config{Services: config.Services{Cosmos: &config.CosmosService{Port: 9090}}}
-	if got := cosmosEndpoint(custom); got != "https://localhost:9090" {
+	if got := CosmosEndpoint(custom); got != "https://localhost:9090" {
 		t.Errorf("custom cosmos endpoint = %q", got)
 	}
 }

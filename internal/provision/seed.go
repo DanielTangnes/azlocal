@@ -20,62 +20,27 @@ import (
 	"github.com/DanielTangnes/azlocal/internal/config"
 )
 
-// target is a parsed seed target URI, e.g. "cosmos://app/users".
-type target struct {
-	scheme string
-	parts  []string
-}
-
-// parseTarget splits a seed target of the form "<scheme>://<path>" into its
-// scheme and slash-separated path parts. The "sb" scheme is an alias for
-// "servicebus".
-func parseTarget(s string) (target, error) {
-	i := strings.Index(s, "://")
-	if i < 0 {
-		return target{}, fmt.Errorf("invalid target %q: expected scheme://path", s)
-	}
-	scheme := strings.ToLower(s[:i])
-	rest := strings.Trim(s[i+len("://"):], "/")
-	if rest == "" {
-		return target{}, fmt.Errorf("invalid target %q: missing path", s)
-	}
-	if scheme == "sb" {
-		scheme = "servicebus"
-	}
-	return target{scheme: scheme, parts: strings.Split(rest, "/")}, nil
-}
-
-// Seed loads every seed entry in cfg into the running emulators.
+// Seed loads every seed entry in cfg into the running emulators. Target
+// syntax and arity are validated by config.ParseSeedTarget (also run at
+// config load time, so errors surface before any emulator is started).
 func Seed(ctx context.Context, cfg *config.Config) error {
 	for _, s := range cfg.Seed {
-		t, err := parseTarget(s.Target)
+		t, err := config.ParseSeedTarget(s.Target)
 		if err != nil {
 			return err
 		}
 
-		switch t.scheme {
+		switch t.Scheme {
 		case "blob":
-			err = wantParts(t, 1, "blob://<container>", func() error {
-				return seedBlob(ctx, cfg, t.parts[0], s.From)
-			})
+			err = seedBlob(ctx, cfg, t.Parts[0], s.From)
 		case "queue":
-			err = wantParts(t, 1, "queue://<queue>", func() error {
-				return seedQueue(ctx, cfg, t.parts[0], s.From)
-			})
+			err = seedQueue(ctx, cfg, t.Parts[0], s.From)
 		case "table":
-			err = wantParts(t, 1, "table://<table>", func() error {
-				return seedTable(ctx, cfg, t.parts[0], s.From)
-			})
+			err = seedTable(ctx, cfg, t.Parts[0], s.From)
 		case "cosmos":
-			err = wantParts(t, 2, "cosmos://<database>/<container>", func() error {
-				return seedCosmos(ctx, cfg, t.parts[0], t.parts[1], s.From)
-			})
+			err = seedCosmos(ctx, cfg, t.Parts[0], t.Parts[1], s.From)
 		case "servicebus":
-			err = wantParts(t, 1, "servicebus://<queue-or-topic>", func() error {
-				return seedServiceBus(ctx, cfg, t.parts[0], s.From)
-			})
-		default:
-			return fmt.Errorf("unknown seed target scheme %q in %q", t.scheme, s.Target)
+			err = seedServiceBus(ctx, cfg, t.Parts[0], s.From)
 		}
 
 		if err != nil {
@@ -85,16 +50,8 @@ func Seed(ctx context.Context, cfg *config.Config) error {
 	return nil
 }
 
-// wantParts validates the target arity before running the loader.
-func wantParts(t target, n int, usage string, fn func() error) error {
-	if len(t.parts) != n {
-		return fmt.Errorf("invalid target: expected %s", usage)
-	}
-	return fn()
-}
-
 func seedBlob(ctx context.Context, cfg *config.Config, container, from string) error {
-	client, err := azblob.NewClientFromConnectionString(storageConnString(cfg), nil)
+	client, err := azblob.NewClientFromConnectionString(StorageConnString(cfg), nil)
 	if err != nil {
 		return err
 	}
@@ -134,7 +91,7 @@ func seedBlob(ctx context.Context, cfg *config.Config, container, from string) e
 }
 
 func seedQueue(ctx context.Context, cfg *config.Config, queue, from string) error {
-	svc, err := azqueue.NewServiceClientFromConnectionString(storageConnString(cfg), nil)
+	svc, err := azqueue.NewServiceClientFromConnectionString(StorageConnString(cfg), nil)
 	if err != nil {
 		return err
 	}
@@ -153,7 +110,7 @@ func seedQueue(ctx context.Context, cfg *config.Config, queue, from string) erro
 }
 
 func seedTable(ctx context.Context, cfg *config.Config, table, from string) error {
-	svc, err := aztables.NewServiceClientFromConnectionString(storageConnString(cfg), nil)
+	svc, err := aztables.NewServiceClientFromConnectionString(StorageConnString(cfg), nil)
 	if err != nil {
 		return err
 	}
@@ -176,7 +133,7 @@ func seedCosmos(ctx context.Context, cfg *config.Config, db, container, from str
 	if pkPath == "" {
 		return fmt.Errorf("container %s/%s is not declared under services.cosmos", db, container)
 	}
-	client, err := cosmosClient(cfg)
+	client, err := CosmosClient(cfg)
 	if err != nil {
 		return err
 	}
@@ -203,7 +160,7 @@ func seedCosmos(ctx context.Context, cfg *config.Config, db, container, from str
 }
 
 func seedServiceBus(ctx context.Context, cfg *config.Config, entity, from string) error {
-	client, err := azservicebus.NewClientFromConnectionString(serviceBusConnString(), nil)
+	client, err := azservicebus.NewClientFromConnectionString(ServiceBusConnString(), nil)
 	if err != nil {
 		return err
 	}

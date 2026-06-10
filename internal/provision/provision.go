@@ -48,7 +48,7 @@ func CreateResources(ctx context.Context, cfg *config.Config) error {
 }
 
 func createStorage(ctx context.Context, cfg *config.Config) error {
-	conn := storageConnString(cfg)
+	conn := StorageConnString(cfg)
 	s := cfg.Services
 
 	if s.Blob != nil {
@@ -103,7 +103,7 @@ func createStorage(ctx context.Context, cfg *config.Config) error {
 }
 
 func createCosmos(ctx context.Context, cfg *config.Config) error {
-	client, err := cosmosClient(cfg)
+	client, err := CosmosClient(cfg)
 	if err != nil {
 		return err
 	}
@@ -138,13 +138,13 @@ func createCosmos(ctx context.Context, cfg *config.Config) error {
 }
 
 // cosmosClient builds a Cosmos client that trusts the emulator's TLS cert.
-func cosmosClient(cfg *config.Config) (*azcosmos.Client, error) {
+func CosmosClient(cfg *config.Config) (*azcosmos.Client, error) {
 	cred, err := azcosmos.NewKeyCredential(cosmosKey)
 	if err != nil {
 		return nil, err
 	}
-	return azcosmos.NewClientWithKey(cosmosEndpoint(cfg), cred, &azcosmos.ClientOptions{
-		ClientOptions: azcore.ClientOptions{Transport: insecureHTTPClient()},
+	return azcosmos.NewClientWithKey(CosmosEndpoint(cfg), cred, &azcosmos.ClientOptions{
+		ClientOptions: azcore.ClientOptions{Transport: InsecureHTTPClient()},
 	})
 }
 
